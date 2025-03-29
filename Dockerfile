@@ -9,14 +9,16 @@ ARG VERSION
 
 WORKDIR /home/node
 
+# Install necessary tools and JDK 8
 RUN apt-get update && apt-get upgrade -y && apt-get install wget apt-transport-https gpg curl git -y \
     && wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor | tee /etc/apt/trusted.gpg.d/adoptium.gpg > /dev/null \
     && echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list \
     && apt-get update \
-    && apt install temurin-8-jdk -y \
-    && curl -s "https://get.sdkman.io" | bash \
-    && source "$HOME/.sdkman/bin/sdkman-init.sh" \
-    && sdk install clojure
+    && apt install temurin-8-jdk -y
+
+# Install SDKMAN and Clojure
+RUN curl -s "https://get.sdkman.io" | bash
+RUN /bin/bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && sdk install clojure"
 
 COPY . .
 
@@ -24,9 +26,9 @@ COPY . .
 RUN git config --global --add safe.directory /home/node
 
 # install frontend dependencies
-RUN yarn --version && yarn install --frozen-lockfile
+RUN yarn --frozen-lockfile
 
-# Set environment variables
+# Set environment variables for Metabase build
 ENV MB_EDITION=community
 ENV VERSION=v0.41.0
 
