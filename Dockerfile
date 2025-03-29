@@ -13,10 +13,10 @@ RUN apt-get update && apt-get upgrade -y && apt-get install wget apt-transport-h
     && wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor | tee /etc/apt/trusted.gpg.d/adoptium.gpg > /dev/null \
     && echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list \
     && apt-get update \
-    && apt install temurin-21-jdk -y \
-    && curl -O https://download.clojure.org/install/linux-install-1.12.0.1488.sh \
-    && chmod +x linux-install-1.12.0.1488.sh \
-    && ./linux-install-1.12.0.1488.sh
+    && apt install temurin-8-jdk -y \
+    && curl -s "https://get.sdkman.io" | bash \
+    && source "$HOME/.sdkman/bin/sdkman-init.sh" \
+    && sdk install clojure
 
 COPY . .
 
@@ -24,18 +24,18 @@ COPY . .
 RUN git config --global --add safe.directory /home/node
 
 # install frontend dependencies
-RUN yarn --frozen-lockfile
+RUN yarn --version && yarn install --frozen-lockfile
+
+# Set environment variables
 ENV MB_EDITION=community
-ENV VERSION=v0.41.0 
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
+ENV VERSION=v0.41.0
 
-# ###################
-# # STAGE 2: runner
-# ###################
+# Build Metabase
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION VERSION=${VERSION} bin/build.sh :version ${VERSION} || { echo 'Build failed'; tail -n 50 /home/node/build.log; exit 1; }
 
-## Remember that this runner image needs to be the same as bin/docker/Dockerfile with the exception that this one grabs the
-## jar from the previous stage rather than the local build
-## we're not yet there to provide an ARM runner till https://github.com/adoptium/adoptium/issues/96 is ready
+###################
+# STAGE 2: runner
+###################
 
 FROM eclipse-temurin:21-jre-alpine as runner
 
